@@ -12,3 +12,7 @@ ALTER TABLE movies
 ALTER TABLE movies 
         ADD CONSTRAINT genres_length_check 
         CHECK (array_length(genres, 1) BETWEEN 1 AND 5);
+
+ALTER TABLE movies 
+        ADD CONSTRAINT version_check 
+        CHECK (version < 10);

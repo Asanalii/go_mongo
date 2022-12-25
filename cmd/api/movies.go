@@ -78,7 +78,9 @@ func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request)
 		app.serverErrorResponse(w, r, err)
 	}
 }
+
 func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Request) {
+
 	id, err := app.readIDParam(r)
 	if err != nil {
 		app.notFoundResponse(w, r)
@@ -112,24 +114,24 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 	movie.Runtime = input.Runtime
 	movie.Genres = input.Genres
 
-	result := app.models.Movies.Update(movie)
+	err = app.models.Movies.Update(movie)
 
-	fmt.Println(result)
+	fmt.Println("*******************************************")
+	fmt.Println(err)
 	fmt.Println(movie)
 	fmt.Println("===========================================")
 
-	if result != nil {
-		app.serverErrorResponse(w, r, err)
-		return
-	}
+	// if result != nil {
+	// 	app.serverErrorResponse(w, r, err)
+	// 	return
+	// }
 
-	result = app.writeJSON(w, http.StatusOK, envelope{"movie": movie}, nil)
+	// result = app.writeJSON(w, http.StatusOK, envelope{"movie": movie}, nil)
 
-	if result != nil {
-		// app.serverErrorResponse(w, r, result)
-		// fmt.Printf("Something wrong %s", app.errorResponse(w, r))
-		app.logError(r, result)
-	}
+	// if result != nil {
+	// 	app.serverErrorResponse(w, r, result)
+	// 	// fmt.Printf("Something wrong %s", app.errorResponse(w, r))
+	// }
 
 }
 
