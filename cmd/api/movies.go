@@ -116,17 +116,17 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 
 	err = app.models.Movies.Update(movie)
 
-	fmt.Println("*******************************************")
-	fmt.Println(err)
-	fmt.Println(movie)
-	fmt.Println("===========================================")
+	// fmt.Println("*******************************************")
+	// fmt.Println(err)
+	// fmt.Println(movie)
+	// fmt.Println("===========================================")
 
 	// if result != nil {
 	// 	app.serverErrorResponse(w, r, err)
 	// 	return
 	// }
 
-	// result = app.writeJSON(w, http.StatusOK, envelope{"movie": movie}, nil)
+	err = app.writeJSON(w, http.StatusOK, envelope{"movie": movie}, nil)
 
 	// if result != nil {
 	// 	app.serverErrorResponse(w, r, result)
