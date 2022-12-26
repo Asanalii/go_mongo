@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/shynggys9219/greenlight/internal/data"
 )
@@ -50,6 +51,41 @@ func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Reques
 	}
 	// // Dump the contents of the input struct in a HTTP response.
 	// fmt.Fprintf(w, "%+v\n", input) //+v here is adding the field name of a value // https://pkg.go.dev/fmt
+}
+
+func (app *application) addDirectorHandler(w http.ResponseWriter, r *http.Request) {
+
+	var input struct {
+		Name    string    `json:"name"`
+		Surname string    `json:"surname"`
+		DOB     time.Time `json:"dob"`
+	}
+
+	err := app.readJSON(w, r, &input)
+	if err != nil {
+		app.errorResponse(w, r, http.StatusBadRequest, err.Error())
+	}
+
+	directors := &data.Directors{
+		Name:    input.Name,
+		Surname: input.Surname,
+		DOB:     input.DOB,
+	}
+
+	err = app.models.Directors.Insert(directors)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	headers := make(http.Header)
+	headers.Set("Location", fmt.Sprintf("/v1/directors/%d", directors.ID))
+
+	err = app.writeJSON(w, http.StatusCreated, envelope{"director": directors}, headers)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+
 }
 
 // Add a showMovieHandler for the "GET /v1/movies/:id" endpoint.

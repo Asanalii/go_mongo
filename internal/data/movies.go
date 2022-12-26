@@ -36,6 +36,15 @@ func (m MovieModel) Insert(movie *Movie) error {
 	return m.DB.QueryRow(query, &movie.Title, &movie.Year, &movie.Runtime, pq.Array(&movie.Genres)).Scan(&movie.ID, &movie.CreatedAt, &movie.Version)
 }
 
+func (d DirectorModel) InsertDirector(directors *Directors) error {
+	query := `
+		INSERT INTO directors(name, year, DOB)
+		VALUES ($1, $2, $3)
+		RETURNING id, name`
+
+	return d.DB.QueryRow(query, &directors.Name, &directors.Surname).Scan(&directors.ID, &directors.Name)
+}
+
 // method for fetching a specific record from the movies table.
 func (m MovieModel) Get(id int64) (*Movie, error) {
 
