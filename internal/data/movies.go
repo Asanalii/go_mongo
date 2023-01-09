@@ -1,8 +1,10 @@
 package data
 
 import (
+	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/lib/pq"
@@ -36,18 +38,17 @@ func (m MovieModel) Insert(movie *Movie) error {
 	return m.DB.QueryRow(query, &movie.Title, &movie.Year, &movie.Runtime, pq.Array(&movie.Genres)).Scan(&movie.ID, &movie.CreatedAt, &movie.Version)
 }
 
-func (d DirectorModel) InsertDirector(directors *Directors) error {
-	query := `
-		INSERT INTO directors(name, year, DOB)
-		VALUES ($1, $2, $3)
-		RETURNING id, name`
+// func (d DirectorModel) InsertDirector(directors *Directors) error {
+// 	query := `
+// 		INSERT INTO directors(name, year, DOB)
+// 		VALUES ($1, $2, $3)
+// 		RETURNING id, name`
 
-	return d.DB.QueryRow(query, &directors.Name, &directors.Surname).Scan(&directors.ID, &directors.Name)
-}
+// 	return d.DB.QueryRow(query, &directors.Name, &directors.Surname).Scan(&directors.ID, &directors.Name)
+// }
 
 // method for fetching a specific record from the movies table.
-func (m MovieModel) Get(id int64) (*Movie, error) {
-
+func (m MovieModel) GetById(id int64) (*Movie, error) {
 	var movie Movie
 	if id < 1 {
 		return nil, ErrRecordNotFound
@@ -74,6 +75,52 @@ func (m MovieModel) Get(id int64) (*Movie, error) {
 	}
 
 	return &movie, nil
+}
+
+func (m MovieModel) Get(title string, genres []string, filters Filters) ([]*Movie, error) {
+
+	query := fmt.Sprintf(`
+	SELECT id, created_at, title, year, runtime, genres, version
+FROM movies
+WHERE (to_tsvector('simple', title) @@ plainto_tsquery('simple', $1) OR $1 = '')
+AND (genres @> $2 OR $2 = '{}')
+ORDER BY %s %s, id ASC
+LIMIT 5 OFFSET 10`, filters.sortColumn(), filters.sortDirection())
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	rows, err := m.DB.QueryContext(ctx, query, title, pq.Array(genres))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	movies := []*Movie{}
+
+	for rows.Next() {
+		// Initialize an empty Movie struct to hold the data for an individual movie.
+		var movie Movie
+		err := rows.Scan(
+			&movie.ID,
+			&movie.CreatedAt,
+			&movie.Title,
+			&movie.Year,
+			&movie.Runtime,
+			pq.Array(&movie.Genres),
+			&movie.Version,
+		)
+		if err != nil {
+			return nil, err
+		}
+		movies = append(movies, &movie)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return movies, nil
 }
 
 // method for updating a specific record in the movies table.

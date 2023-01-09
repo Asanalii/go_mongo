@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/shynggys9219/greenlight/internal/data"
 )
@@ -53,41 +52,6 @@ func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Reques
 	// fmt.Fprintf(w, "%+v\n", input) //+v here is adding the field name of a value // https://pkg.go.dev/fmt
 }
 
-func (app *application) addDirectorHandler(w http.ResponseWriter, r *http.Request) {
-
-	var input struct {
-		Name    string    `json:"name"`
-		Surname string    `json:"surname"`
-		DOB     time.Time `json:"dob"`
-	}
-
-	err := app.readJSON(w, r, &input)
-	if err != nil {
-		app.errorResponse(w, r, http.StatusBadRequest, err.Error())
-	}
-
-	directors := &data.Directors{
-		Name:    input.Name,
-		Surname: input.Surname,
-		DOB:     input.DOB,
-	}
-
-	err = app.models.Directors.Insert(directors)
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-		return
-	}
-
-	headers := make(http.Header)
-	headers.Set("Location", fmt.Sprintf("/v1/directors/%d", directors.ID))
-
-	err = app.writeJSON(w, http.StatusCreated, envelope{"director": directors}, headers)
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-	}
-
-}
-
 // Add a showMovieHandler for the "GET /v1/movies/:id" endpoint.
 func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := app.readIDParam(r)
@@ -98,7 +62,7 @@ func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request)
 	// the URL and some dummy data. Also notice that we deliberately haven't set a
 	// value for the Year field.
 
-	movie, err := app.models.Movies.Get(id)
+	movie, err := app.models.Movies.GetById(id)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -115,6 +79,42 @@ func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request)
 	}
 }
 
+func (app *application) showMoviesHandler(w http.ResponseWriter, r *http.Request) {
+
+	// movie, err := app.models.Movies.Get()
+
+	var input struct {
+		Title  string
+		Genres []string
+		data.Filters
+	}
+
+	// v := validator.New()
+
+	qs := r.URL.Query()
+
+	input.Title = app.readString(qs, "title", "")
+	input.Genres = app.readCSV(qs, "genres", []string{})
+
+	input.Filters.Page = app.readInt(qs, "page", 1)
+	input.Filters.PageSize = app.readInt(qs, "page_size", 20)
+
+	input.Sort = app.readString(qs, "sort", "id")
+	input.Filters.SortSafelist = []string{"id", "title", "year", "runtime", "-id", "-title", "-year", "-runtime"}
+
+	movies, err := app.models.Movies.Get(input.Title, input.Genres, input.Filters)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	// Send a JSON response containing the movie data.
+	err = app.writeJSON(w, http.StatusOK, envelope{"movies": movies}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+
+}
+
 func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Request) {
 
 	id, err := app.readIDParam(r)
@@ -122,7 +122,7 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 		app.notFoundResponse(w, r)
 	}
 
-	movie, err := app.models.Movies.Get(id)
+	movie, err := app.models.Movies.GetById(id)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -133,9 +133,9 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	var input struct {
-		Title   string   `json:"title"`
-		Year    int32    `json:"year"`
-		Runtime int32    `json:"runtime"`
+		Title   *string  `json:"title"`
+		Year    *int32   `json:"year"`
+		Runtime *int32   `json:"runtime"`
 		Genres  []string `json:"genres"`
 	}
 
@@ -144,30 +144,25 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 		app.serverErrorResponse(w, r, err)
 		return
 	}
-
-	movie.Title = input.Title
-	movie.Year = input.Year
-	movie.Runtime = input.Runtime
-	movie.Genres = input.Genres
-
+	if input.Title != nil {
+		movie.Title = *input.Title
+	}
+	if input.Year != nil {
+		movie.Year = *input.Year
+	}
+	if input.Runtime != nil {
+		movie.Runtime = *input.Runtime
+	}
+	if input.Genres != nil {
+		movie.Genres = input.Genres
+	}
 	err = app.models.Movies.Update(movie)
-
-	// fmt.Println("*******************************************")
-	// fmt.Println(err)
-	// fmt.Println(movie)
-	// fmt.Println("===========================================")
-
-	// if result != nil {
-	// 	app.serverErrorResponse(w, r, err)
-	// 	return
-	// }
 
 	err = app.writeJSON(w, http.StatusOK, envelope{"movie": movie}, nil)
 
-	// if result != nil {
-	// 	app.serverErrorResponse(w, r, result)
-	// 	// fmt.Printf("Something wrong %s", app.errorResponse(w, r))
-	// }
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
 
 }
 

@@ -8,6 +8,7 @@ import (
 
 func (app *application) routes() *httprouter.Router {
 	// Initialize a new httprouter router instance.
+
 	router := httprouter.New()
 	router.NotFound = http.HandlerFunc(app.notFoundResponse)
 	router.MethodNotAllowed = http.HandlerFunc(app.methodNotAllowedResponse)
@@ -15,12 +16,16 @@ func (app *application) routes() *httprouter.Router {
 	// endpoints using the HandlerFunc() method. Note that http.MethodGet and
 	// http.MethodPost are constants which equate to the strings "GET" and "POST"
 	// respectively.
+
 	router.HandlerFunc(http.MethodGet, "/v1/healthcheck", app.healthcheckHandler)
 	router.HandlerFunc(http.MethodPost, "/v1/movies", app.createMovieHandler)
+	router.HandlerFunc(http.MethodGet, "/v1/movies", app.showMoviesHandler)
+	router.HandlerFunc(http.MethodGet, "/v1/directors", app.showDirectorsHandler)
 	router.HandlerFunc(http.MethodPost, "/v1/directors", app.addDirectorHandler)
 	router.HandlerFunc(http.MethodGet, "/v1/movies/:id", app.showMovieHandler)
+	// router.HandlerFunc(http.MethodGet, "/v1/directors/:name", app.showDirector)
 	router.HandlerFunc(http.MethodDelete, "/v1/movies/:id", app.deleteMovieHandler)
-	router.HandlerFunc(http.MethodPut, "/v1/movies/:id", app.updateMovieHandler)
+	router.HandlerFunc(http.MethodPatch, "/v1/movies/:id", app.updateMovieHandler)
 	// Return the httprouter instance.
 	return router
 }
